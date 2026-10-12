@@ -1,6 +1,6 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 3                       //
+// Revision: 5                       //
 // Date created: 2025/10/16          //
 // Date last modified: 2026/10/12    //
 // Author: Whiskey / Google Gemini   //
@@ -13,8 +13,18 @@
 const NEW_EMAIL_WINDOW_DAYS = 2;    // Number of days back to check (0 = all messages)
 const NEW_EMAIL_WINDOW_HOURS = 0;   // Number of hours back to check (0 = all messages)
 const NEW_EMAIL_WINDOW_MINUTES = 0; // Number of minutes back to check (0 = all messages)
-const ENABLE_INFO = false;          // Set to true for summary metrics
-const ENABLE_DEBUG = false;         // Set to true for detailed message logs
+
+// Trigger execution settings
+// TRIGGER_MAX_EXECUTION_TIME: execution time limit settings (Must not exceed Google's hard limit of 6 minutes total)
+// Allowed values for MINUTES : 0 to 5
+// Allowed values for SECONDS : 0 to 59
+const MAX_EXECUTION_TIME = true; // Set to true for execution time check
+const MAX_EXECUTION_TIME_MINUTES = 5; 
+const MAX_EXECUTION_TIME_SECONDS = 0; 
+
+const ENABLE_INFO = true;          // Set to true for summary metrics
+const ENABLE_DEBUG = true;         // Set to true for detailed message logs
+const ENABLE_WARNING = false;       // Set to true for detailed warning logs
 
 // Trigger frequency settings
 // TRIGGER_FREQUENCY_TYPE: 'MINUTES' or 'HOURS'
@@ -30,12 +40,22 @@ const TRIGGER_EVERY_X = 30;
 
 function applyHierarchicalLabelsFromGmail() {
 
+  var totalLimitMs = (MAX_EXECUTION_TIME_MINUTES * 60 * 1000) + (MAX_EXECUTION_TIME_SECONDS * 1000);
+  var absoluteMaxMs = 6 * 60 * 1000;
+
+  // Validate that total execution time limit does not exceed Google's 6-minute hard limit if enabled
+  if (MAX_EXECUTION_TIME && totalLimitMs >= absoluteMaxMs) {
+    throw new Error('[Error] Execution time limit cannot exceed 6 minutes (360,000 ms). Google Apps Script has a hard execution limit of 6 minutes.');
+  }
+
   if (ENABLE_DEBUG) {
     Logger.log('==================================================');
     Logger.log('=== Hierarchical labels run                    ===');
     Logger.log('==================================================');
   }
   
+  var startTime = new Date().getTime();
+
   var lock = LockService.getScriptLock();
 
   if (!lock.tryLock(10000)) {
@@ -58,6 +78,8 @@ function applyHierarchicalLabelsFromGmail() {
     labelsAddedCount: 0,
     createdGmailLabels: 0
   };
+
+  var timeOutReached = false;
 
   try {
 
@@ -89,11 +111,22 @@ function applyHierarchicalLabelsFromGmail() {
       Logger.log('[Debug] Total threads matched: ' + threads.length);
     }
 
-    threads.forEach(function(thread, threadIndex) {
+    for (var threadIndex = 0; threadIndex < threads.length; threadIndex++) {
     
+      // Check if execution time limit is approaching (only if MAX_EXECUTION_TIME is true)
+      if (MAX_EXECUTION_TIME && (new Date().getTime() - startTime > totalLimitMs)) {
+        timeOutReached = true;
+        if (ENABLE_WARNING) {
+          Logger.log('[Warning] Execution time limit (' + MAX_EXECUTION_TIME_MINUTES + 'm ' + MAX_EXECUTION_TIME_SECONDS + 's) reached. Stopping gracefully.');
+        }
+        break;
+      }
+
+      var thread = threads[threadIndex];
       var messages = thread.getMessages();
 
-      messages.forEach(function(msg, msgIndex) {
+      for (var msgIndex = 0; msgIndex < messages.length; msgIndex++) {
+        var msg = messages[msgIndex];
     
         stats.totalMessages++;
     
@@ -177,13 +210,13 @@ function applyHierarchicalLabelsFromGmail() {
 
           }
         }
-      });
-    });
+      }
+    }
 
-    if (ENABLE_INFO) {
+    if (ENABLE_INFO || timeOutReached) {
 
       Logger.log('==================================================');
-      Logger.log('=== Summary & Metrics ===');
+      Logger.log('=== Summary & Metrics (timeout reached: ' + timeOutReached + ') ===');
       Logger.log('==================================================');
       Logger.log('[Stats] Total Threads Searched:          ' + stats.totalThreads);
       Logger.log('[Stats] Total Messages Evaluated:        ' + stats.totalMessages);
