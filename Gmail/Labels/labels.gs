@@ -1,8 +1,8 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 2                       //
+// Revision: 3                       //
 // Date created: 2025/10/16          //
-// Date last modified: 2026/10/05    //
+// Date last modified: 2026/10/12    //
 // Author: Whiskey / Google Gemini   //
 ///////////////////////////////////////
 
@@ -11,6 +11,8 @@
 // ---------------------------------------------------------------------------
 
 const NEW_EMAIL_WINDOW_DAYS = 2;    // Number of days back to check (0 = all messages)
+const NEW_EMAIL_WINDOW_HOURS = 0;   // Number of hours back to check (0 = all messages)
+const NEW_EMAIL_WINDOW_MINUTES = 0; // Number of minutes back to check (0 = all messages)
 const ENABLE_INFO = false;          // Set to true for summary metrics
 const ENABLE_DEBUG = false;         // Set to true for detailed message logs
 
@@ -68,7 +70,15 @@ function applyHierarchicalLabelsFromGmail() {
     });
 
     // Step 2: Search threads
-    var query = NEW_EMAIL_WINDOW_DAYS > 0 ? 'newer_than:' + NEW_EMAIL_WINDOW_DAYS + 'd' : 'has:userlabel';
+    var query = 'has:userlabel';
+    if (NEW_EMAIL_WINDOW_DAYS > 0) {
+      query = 'newer_than:' + NEW_EMAIL_WINDOW_DAYS + 'd';
+    } else if (NEW_EMAIL_WINDOW_HOURS > 0) {
+      query = 'newer_than:' + NEW_EMAIL_WINDOW_HOURS + 'h';
+    } else if (NEW_EMAIL_WINDOW_MINUTES > 0) {
+      query = 'newer_than:' + NEW_EMAIL_WINDOW_MINUTES + 'm';
+    }
+
     var threads = GmailApp.search(query);
     
     stats.totalThreads = threads.length;
