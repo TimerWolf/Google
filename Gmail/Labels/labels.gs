@@ -1,6 +1,6 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 5                       //
+// Revision: 6                       //
 // Date created: 2025/10/16          //
 // Date last modified: 2026/10/12    //
 // Author: Whiskey / Google Gemini   //
@@ -22,6 +22,7 @@ const MAX_EXECUTION_TIME = true; // Set to true for execution time check
 const MAX_EXECUTION_TIME_MINUTES = 5; 
 const MAX_EXECUTION_TIME_SECONDS = 0; 
 
+const ENABLE_SETTINGS = true;      // Set to true to log active settings on run
 const ENABLE_INFO = true;          // Set to true for summary metrics
 const ENABLE_DEBUG = true;         // Set to true for detailed message logs
 const ENABLE_WARNING = false;       // Set to true for detailed warning logs
@@ -48,10 +49,28 @@ function applyHierarchicalLabelsFromGmail() {
     throw new Error('[Error] Execution time limit cannot exceed 6 minutes (360,000 ms). Google Apps Script has a hard execution limit of 6 minutes.');
   }
 
-  if (ENABLE_DEBUG) {
+  // Unified start and settings log block
+  if (ENABLE_DEBUG || ENABLE_SETTINGS) {
     Logger.log('==================================================');
-    Logger.log('=== Hierarchical labels run                    ===');
+    Logger.log('=== Hierarchical labels run & settings         ===');
     Logger.log('==================================================');
+    
+    if (ENABLE_SETTINGS) {
+      Logger.log('[Config] NEW_EMAIL_WINDOW_DAYS:        ' + NEW_EMAIL_WINDOW_DAYS);
+      Logger.log('[Config] NEW_EMAIL_WINDOW_HOURS:       ' + NEW_EMAIL_WINDOW_HOURS);
+      Logger.log('[Config] NEW_EMAIL_WINDOW_MINUTES:     ' + NEW_EMAIL_WINDOW_MINUTES);
+      Logger.log('[Config] MAX_EXECUTION_TIME:           ' + MAX_EXECUTION_TIME);
+      Logger.log('[Config] MAX_EXECUTION_TIME_MINUTES:   ' + MAX_EXECUTION_TIME_MINUTES);
+      Logger.log('[Config] MAX_EXECUTION_TIME_SECONDS:   ' + MAX_EXECUTION_TIME_SECONDS);
+      Logger.log('[Config] ENABLE_INFO:                  ' + ENABLE_INFO);
+      Logger.log('[Config] ENABLE_DEBUG:                 ' + ENABLE_DEBUG);
+      Logger.log('[Config] ENABLE_WARNING:               ' + ENABLE_WARNING);
+      Logger.log('[Config] ENABLE_SETTINGS:              ' + ENABLE_SETTINGS);
+      Logger.log('[Config] TRIGGER_FREQUENCY_TYPE:       ' + TRIGGER_FREQUENCY_TYPE);
+      Logger.log('[Config] TRIGGER_EVERY_X:              ' + TRIGGER_EVERY_X);
+      Logger.log('==================================================');
+    }
+    Logger.log('');
   }
   
   var startTime = new Date().getTime();
