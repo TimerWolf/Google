@@ -1,6 +1,6 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 8                       //
+// Revision: 9                       //
 // Date created: 2025/10/16          //
 // Date last modified: 2026/10/12    //
 // Author: Whiskey / Google Gemini   //
@@ -109,14 +109,19 @@ function applyHierarchicalLabelsFromGmail() {
       labelMapByName[lbl.getName()] = lbl;
     });
 
-    // Step 2: Search threads
-    var query = 'has:userlabel';
-    if (NEW_EMAIL_WINDOW_DAYS > 0) {
-      query = 'newer_than:' + NEW_EMAIL_WINDOW_DAYS + 'd';
-    } else if (NEW_EMAIL_WINDOW_HOURS > 0) {
-      query = 'newer_than:' + NEW_EMAIL_WINDOW_HOURS + 'h';
-    } else if (NEW_EMAIL_WINDOW_MINUTES > 0) {
-      query = 'newer_than:' + NEW_EMAIL_WINDOW_MINUTES + 'm';
+    // Step 2: Build exact Unix timestamp search query and readable description
+    var totalWindowMs = (NEW_EMAIL_WINDOW_DAYS * 24 * 60 * 60 * 1000) +
+                        (NEW_EMAIL_WINDOW_HOURS * 60 * 60 * 1000) +
+                        (NEW_EMAIL_WINDOW_MINUTES * 60 * 1000);
+
+    var query = '';
+
+    if (totalWindowMs > 0) {
+      var afterSec = Math.floor((startTime - totalWindowMs) / 1000);
+      var beforeSec = Math.floor(startTime / 1000);
+      query = 'after:' + afterSec + ' before:' + beforeSec;
+    } else {
+      query = 'has:userlabel'; // Fallback to all labeled mail if window is 0
     }
 
     var threads = GmailApp.search(query);
@@ -125,6 +130,7 @@ function applyHierarchicalLabelsFromGmail() {
 
     if (ENABLE_DEBUG) {
       Logger.log('[Debug] Total cached Gmail labels in account: ' + userLabels.length);
+      Logger.log('[Debug] Time window configuration: ' + NEW_EMAIL_WINDOW_DAYS + ' day(s), ' + NEW_EMAIL_WINDOW_HOURS + ' hour(s), ' + NEW_EMAIL_WINDOW_MINUTES + ' minute(s)');
       Logger.log('[Debug] Executed search query: "' + query + '"');
       Logger.log('[Debug] Total threads matched: ' + threads.length);
     }
@@ -145,6 +151,11 @@ function applyHierarchicalLabelsFromGmail() {
 
       for (var msgIndex = 0; msgIndex < messages.length; msgIndex++) {
         var msg = messages[msgIndex];
+
+        // Double check exact millisecond timestamp if window is active
+        if (totalWindowMs > 0 && msg.getDate().getTime() < (startTime - totalWindowMs)) {
+          continue; 
+        }
     
         stats.totalMessages++;
     
