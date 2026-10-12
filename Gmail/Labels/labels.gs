@@ -1,6 +1,6 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 7                       //
+// Revision: 8                       //
 // Date created: 2025/10/16          //
 // Date last modified: 2026/10/12    //
 // Author: Whiskey / Google Gemini   //
@@ -70,7 +70,6 @@ function applyHierarchicalLabelsFromGmail() {
       Logger.log('[Config] TRIGGER_EVERY_X:              ' + TRIGGER_EVERY_X);
       Logger.log('==================================================');
     }
-    Logger.log('');
   }
   
   var startTime = new Date().getTime();
