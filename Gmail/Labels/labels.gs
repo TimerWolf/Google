@@ -1,6 +1,6 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 9                       //
+// Revision: 10                      //
 // Date created: 2025/10/16          //
 // Date last modified: 2026/10/12    //
 // Author: Whiskey / Google Gemini   //
@@ -13,6 +13,9 @@
 const NEW_EMAIL_WINDOW_DAYS = 2;    // Number of days back to check (0 = all messages)
 const NEW_EMAIL_WINDOW_HOURS = 0;   // Number of hours back to check (0 = all messages)
 const NEW_EMAIL_WINDOW_MINUTES = 0; // Number of minutes back to check (0 = all messages)
+
+// Message filtering settings
+const EXCLUDE_SENT_FROM_ME = true;  // Set to true to ignore messages sent by yourself (-from:me)
 
 // Trigger execution settings
 // TRIGGER_MAX_EXECUTION_TIME: execution time limit settings (Must not exceed Google's hard limit of 6 minutes total)
@@ -59,6 +62,7 @@ function applyHierarchicalLabelsFromGmail() {
       Logger.log('[Config] NEW_EMAIL_WINDOW_DAYS:        ' + NEW_EMAIL_WINDOW_DAYS);
       Logger.log('[Config] NEW_EMAIL_WINDOW_HOURS:       ' + NEW_EMAIL_WINDOW_HOURS);
       Logger.log('[Config] NEW_EMAIL_WINDOW_MINUTES:     ' + NEW_EMAIL_WINDOW_MINUTES);
+      Logger.log('[Config] EXCLUDE_SENT_FROM_ME:         ' + EXCLUDE_SENT_FROM_ME);
       Logger.log('[Config] MAX_EXECUTION_TIME:           ' + MAX_EXECUTION_TIME);
       Logger.log('[Config] MAX_EXECUTION_TIME_MINUTES:   ' + MAX_EXECUTION_TIME_MINUTES);
       Logger.log('[Config] MAX_EXECUTION_TIME_SECONDS:   ' + MAX_EXECUTION_TIME_SECONDS);
@@ -114,15 +118,22 @@ function applyHierarchicalLabelsFromGmail() {
                         (NEW_EMAIL_WINDOW_HOURS * 60 * 60 * 1000) +
                         (NEW_EMAIL_WINDOW_MINUTES * 60 * 1000);
 
-    var query = '';
+    var queryParts = [];
 
     if (totalWindowMs > 0) {
       var afterSec = Math.floor((startTime - totalWindowMs) / 1000);
       var beforeSec = Math.floor(startTime / 1000);
-      query = 'after:' + afterSec + ' before:' + beforeSec;
+      queryParts.push('after:' + afterSec);
+      queryParts.push('before:' + beforeSec);
     } else {
-      query = 'has:userlabel'; // Fallback to all labeled mail if window is 0
+      queryParts.push('has:userlabel'); // Fallback to all labeled mail if window is 0
     }
+
+    if (EXCLUDE_SENT_FROM_ME) {
+      queryParts.push('-from:me');
+    }
+
+    var query = queryParts.join(' ');
 
     var threads = GmailApp.search(query);
     
@@ -131,6 +142,7 @@ function applyHierarchicalLabelsFromGmail() {
     if (ENABLE_DEBUG) {
       Logger.log('[Debug] Total cached Gmail labels in account: ' + userLabels.length);
       Logger.log('[Debug] Time window configuration: ' + NEW_EMAIL_WINDOW_DAYS + ' day(s), ' + NEW_EMAIL_WINDOW_HOURS + ' hour(s), ' + NEW_EMAIL_WINDOW_MINUTES + ' minute(s)');
+      Logger.log('[Debug] Exclude sent messages (-from:me): ' + EXCLUDE_SENT_FROM_ME);
       Logger.log('[Debug] Executed search query: "' + query + '"');
       Logger.log('[Debug] Total threads matched: ' + threads.length);
     }
@@ -246,6 +258,7 @@ function applyHierarchicalLabelsFromGmail() {
 
       var executionTimeMs = new Date().getTime() - startTime;
       var executionTimeSec = (executionTimeMs / 1000).toFixed(2);
+      var sentStatusText = EXCLUDE_SENT_FROM_ME ? 'false' : 'true';
 
       Logger.log('==================================================');
       Logger.log('=== Summary & Metrics (timeout reached: ' + timeOutReached + ') ===');
@@ -253,6 +266,7 @@ function applyHierarchicalLabelsFromGmail() {
       Logger.log('[Stats] Execution Time:                  ' + executionTimeSec + ' seconds (' + executionTimeMs + ' ms)');
       Logger.log('[Stats] Total Threads Searched:          ' + stats.totalThreads);
       Logger.log('[Stats] Total Messages Evaluated:        ' + stats.totalMessages);
+      Logger.log('[Stats] Sent Messages Filter:            ' + sentStatusText);
       Logger.log('[Stats] Messages WITH user labels:       ' + stats.messagesWithLabels);
       Logger.log('[Stats] Messages WITHOUT user labels:    ' + stats.messagesWithoutLabels);
       Logger.log('[Stats] Hierarchical labels (with /):    ' + stats.hierarchicalLabelsFound);
