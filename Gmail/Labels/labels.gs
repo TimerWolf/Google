@@ -1,6 +1,6 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 6                       //
+// Revision: 7                       //
 // Date created: 2025/10/16          //
 // Date last modified: 2026/10/12    //
 // Author: Whiskey / Google Gemini   //
@@ -234,9 +234,13 @@ function applyHierarchicalLabelsFromGmail() {
 
     if (ENABLE_INFO || timeOutReached) {
 
+      var executionTimeMs = new Date().getTime() - startTime;
+      var executionTimeSec = (executionTimeMs / 1000).toFixed(2);
+
       Logger.log('==================================================');
       Logger.log('=== Summary & Metrics (timeout reached: ' + timeOutReached + ') ===');
       Logger.log('==================================================');
+      Logger.log('[Stats] Execution Time:                  ' + executionTimeSec + ' seconds (' + executionTimeMs + ' ms)');
       Logger.log('[Stats] Total Threads Searched:          ' + stats.totalThreads);
       Logger.log('[Stats] Total Messages Evaluated:        ' + stats.totalMessages);
       Logger.log('[Stats] Messages WITH user labels:       ' + stats.messagesWithLabels);
