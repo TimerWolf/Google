@@ -1,6 +1,6 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 12                      //
+// Revision: 13                      //
 // Date created: 2025/10/16          //
 // Date last modified: 2026/10/13    //
 // Author: Whiskey / Google Gemini   //
@@ -68,10 +68,6 @@ const ENABLE_WARNING = false;       // Set to true for detailed warning logs
 
 const TRIGGER_FREQUENCY_TYPE = 'MINUTES'; 
 const TRIGGER_EVERY_X = 30;                
-
-// ---------------------------------------------------------------------------
-// Main function
-// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Main function
