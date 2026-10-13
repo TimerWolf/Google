@@ -1,6 +1,6 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 11                      //
+// Revision: 12                      //
 // Date created: 2025/10/16          //
 // Date last modified: 2026/10/13    //
 // Author: Whiskey / Google Gemini   //
@@ -10,9 +10,23 @@
 // Settings
 // ---------------------------------------------------------------------------
 
-const NEW_EMAIL_WINDOW_DAYS = 2;    // Number of days back to check (0 = all messages)
-const NEW_EMAIL_WINDOW_HOURS = 0;   // Number of hours back to check (0 = all messages)
-const NEW_EMAIL_WINDOW_MINUTES = 0; // Number of minutes back to check (0 = all messages)
+// CLOCK_TIMESTAMP - Dynamic time window configuration:
+// 1. Relative rolling offset (from current execution time):
+//    - ['-2d']                       = 2 days back from current execution time.
+//    - ['+12h']                      = 12 hours forward from current execution time.
+//    (Units: m = minutes, h = hours, d = days, M = months, y = years)
+//
+// 2. Absolute date & time range (with optional directional '-' prefix or offsets):
+//    - ['2026-10-13']                = From 00:00 on that date FORWARD to current time.
+//    - ['-2026-10-13']               = From 00:00 on that date BACKWARD in time.
+//    - ['2026-10-13 14:55', '-2h']   = 2 hours BACKWARD starting from 2026-10-13 14:55.
+//    - ['2026-10-13 00:00', '14:55']  = Exact start and end time on the same day.
+//
+// 3. No restriction:
+//    - []                            = Searches ALL messages in your account (no time filter).
+const CLOCK_TIMESTAMP = [
+  '-2d',
+];
 
 // Message filtering settings
 const EXCLUDE_SENT_FROM_ME = true;  // Set to true to ignore messages sent by yourself (-from:me)
@@ -59,6 +73,10 @@ const TRIGGER_EVERY_X = 30;
 // Main function
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Main function
+// ---------------------------------------------------------------------------
+
 function applyHierarchicalLabelsFromGmail() {
 
   var totalLimitMs = (MAX_EXECUTION_TIME_MINUTES * 60 * 1000) + (MAX_EXECUTION_TIME_SECONDS * 1000);
@@ -97,7 +115,6 @@ function applyHierarchicalLabelsFromGmail() {
       // Wildcard logic
       if (targetPattern.indexOf('*') !== -1) {
         
-        // Convert wildcard string into Regex pattern
         var escapeRegex = function(str) {
           return str.replace(/([.+^${}()|[\]\\])/g, '\\$1');
         };
@@ -151,6 +168,131 @@ function applyHierarchicalLabelsFromGmail() {
     }
   }
 
+  // Parse CLOCK_TIMESTAMP dynamically (Supports negative date prefixes & relative offsets)
+  var startTimeSec = null;
+  var endTimeSec = null;
+  var currentTimeMs = new Date().getTime();
+
+  if (CLOCK_TIMESTAMP && CLOCK_TIMESTAMP.length > 0) {
+    var rawFirstVal = CLOCK_TIMESTAMP[0].trim();
+    var isNegativeDate = false;
+
+    // Check for negative date prefix e.g. '-2026-10-13'
+    if (rawFirstVal.indexOf('-') === 0 && rawFirstVal.match(/^-\d{4}-\d{2}-\d{2}/)) {
+      isNegativeDate = true;
+      rawFirstVal = rawFirstVal.substring(1).trim();
+    }
+
+    // Check if relative offset format (e.g. '-2d', '+4h', '-30m')
+    var relativeMatch = rawFirstVal.match(/^([+-])(\d+)([mhdMy])$/);
+    if (relativeMatch) {
+      var sign = relativeMatch[1];
+      var amount = parseInt(relativeMatch[2], 10);
+      var unit = relativeMatch[3];
+
+      var multiplier = 1000;
+      if (unit === 'm') multiplier *= 60;
+      else if (unit === 'h') multiplier *= 3600;
+      else if (unit === 'd') multiplier *= 86400;
+      else if (unit === 'M') multiplier *= 86400 * 30; // Approx month
+      else if (unit === 'y') multiplier *= 86400 * 365; // Approx year
+
+      var offsetMs = amount * multiplier;
+
+      if (sign === '-') {
+        startTimeSec = Math.floor((currentTimeMs - offsetMs) / 1000);
+        endTimeSec = Math.floor(currentTimeMs / 1000);
+      } else {
+        startTimeSec = Math.floor(currentTimeMs / 1000);
+        endTimeSec = Math.floor((currentTimeMs + offsetMs) / 1000);
+      }
+    } else {
+      // Absolute timestamp parsing
+      var baseTimeMs = new Date(rawFirstVal).getTime();
+
+      if (CLOCK_TIMESTAMP.length > 1 && CLOCK_TIMESTAMP[1]) {
+        var secondVal = CLOCK_TIMESTAMP[1].trim();
+        var secondRelative = secondVal.match(/^([+-])(\d+)([mhdMy])$/);
+
+        if (secondRelative) {
+          var secSign = secondRelative[1];
+          var secAmount = parseInt(secondRelative[2], 10);
+          var secUnit = secondRelative[3];
+
+          var secMult = 1000;
+          if (secUnit === 'm') secMult *= 60;
+          else if (secUnit === 'h') secMult *= 3600;
+          else if (secUnit === 'd') secMult *= 86400;
+          else if (secUnit === 'M') secMult *= 86400 * 30;
+          else if (secUnit === 'y') secMult *= 86400 * 365;
+
+          var secOffsetMs = secAmount * secMult;
+
+          if (secSign === '-') {
+            startTimeSec = Math.floor((baseTimeMs - secOffsetMs) / 1000);
+            endTimeSec = Math.floor(baseTimeMs / 1000);
+          } else {
+            startTimeSec = Math.floor(baseTimeMs / 1000);
+            endTimeSec = Math.floor((baseTimeMs + secOffsetMs) / 1000);
+          }
+        } else if (secondVal.indexOf(':') === 2 || (secondVal.indexOf(':') === 1 && secondVal.length <= 5)) {
+          var baseDateStr = rawFirstVal.split(' ')[0];
+          startTimeSec = Math.floor(baseTimeMs / 1000);
+          endTimeSec = Math.floor(new Date(baseDateStr + ' ' + secondVal).getTime() / 1000);
+        } else {
+          startTimeSec = Math.floor(baseTimeMs / 1000);
+          endTimeSec = Math.floor(new Date(secondVal).getTime() / 1000);
+        }
+      } else {
+        if (isNegativeDate) {
+          startTimeSec = null; 
+          endTimeSec = Math.floor(baseTimeMs / 1000);
+        } else {
+          startTimeSec = Math.floor(baseTimeMs / 1000);
+          endTimeSec = Math.floor(currentTimeMs / 1000);
+        }
+      }
+    }
+  }
+
+  // Calculate formatted duration text for logging (Plural 's' applied ONLY if val > 1)
+  var timeWindowText = 'All Messages (No Window)';
+  if (startTimeSec !== null || endTimeSec !== null) {
+    var effStart = startTimeSec !== null ? startTimeSec : 0;
+    var effEnd = endTimeSec !== null ? endTimeSec : Math.floor(currentTimeMs / 1000);
+    var diffSec = Math.abs(effEnd - effStart);
+
+    var calcYears = Math.floor(diffSec / (86400 * 365));
+    diffSec %= (86400 * 365);
+
+    var calcMonths = Math.floor(diffSec / (86400 * 30));
+    diffSec %= (86400 * 30);
+
+    var calcDays = Math.floor(diffSec / 86400);
+    diffSec %= 86400;
+
+    var calcHours = Math.floor(diffSec / 3600);
+    diffSec %= 3600;
+
+    var calcMinutes = Math.floor(diffSec / 60);
+    var calcSeconds = diffSec % 60;
+
+    var formatUnit = function(val, singular, plural) {
+      return val + ' ' + (val > 1 ? plural : singular);
+    };
+
+    var parts = [
+      formatUnit(calcYears, 'year', 'years'),
+      formatUnit(calcMonths, 'month', 'months'),
+      formatUnit(calcDays, 'day', 'days'),
+      formatUnit(calcHours, 'hour', 'hours'),
+      formatUnit(calcMinutes, 'minute', 'minutes'),
+      formatUnit(calcSeconds, 'second', 'seconds')
+    ];
+
+    timeWindowText = 'Custom (' + CLOCK_TIMESTAMP.join(' -> ') + ') | ' + parts.join(', ');
+  }
+
   // Unified start and settings log block
   if (ENABLE_DEBUG || ENABLE_SETTINGS) {
     Logger.log('==================================================');
@@ -158,9 +300,8 @@ function applyHierarchicalLabelsFromGmail() {
     Logger.log('==================================================');
     
     if (ENABLE_SETTINGS) {
-      Logger.log('[Config] NEW_EMAIL_WINDOW_DAYS:        ' + NEW_EMAIL_WINDOW_DAYS);
-      Logger.log('[Config] NEW_EMAIL_WINDOW_HOURS:       ' + NEW_EMAIL_WINDOW_HOURS);
-      Logger.log('[Config] NEW_EMAIL_WINDOW_MINUTES:     ' + NEW_EMAIL_WINDOW_MINUTES);
+      Logger.log('[Config] CLOCK_TIMESTAMP (Configured):  ' + (CLOCK_TIMESTAMP.length > 0 ? CLOCK_TIMESTAMP.join(', ') : 'None (Search ALL messages)'));
+      Logger.log('[Config] Time Window Evaluated:        ' + timeWindowText);
       Logger.log('[Config] EXCLUDE_SENT_FROM_ME:         ' + EXCLUDE_SENT_FROM_ME);
       Logger.log('[Config] RESTRICT_TO_TARGET_LABELS:    ' + RESTRICT_TO_TARGET_LABELS);
       Logger.log('[Config] STRICT_LABEL_VALIDATION:      ' + STRICT_LABEL_VALIDATION);
@@ -210,10 +351,6 @@ function applyHierarchicalLabelsFromGmail() {
   try {
 
     // Step 2: Build exact Unix timestamp search query and label restriction
-    var totalWindowMs = (NEW_EMAIL_WINDOW_DAYS * 24 * 60 * 60 * 1000) +
-                        (NEW_EMAIL_WINDOW_HOURS * 60 * 60 * 1000) +
-                        (NEW_EMAIL_WINDOW_MINUTES * 60 * 1000);
-
     var queryParts = [];
 
     // Label scope restriction based on activeMatchedLabels
@@ -234,12 +371,12 @@ function applyHierarchicalLabelsFromGmail() {
       queryParts.push('has:userlabel'); // Fallback to all labeled mail if restriction is false
     }
 
-    // Time window restriction
-    if (totalWindowMs > 0) {
-      var afterSec = Math.floor((startTime - totalWindowMs) / 1000);
-      var beforeSec = Math.floor(startTime / 1000);
-      queryParts.push('after:' + afterSec);
-      queryParts.push('before:' + beforeSec);
+    // Time window restriction based on CLOCK_TIMESTAMP
+    if (startTimeSec !== null) {
+      queryParts.push('after:' + startTimeSec);
+    }
+    if (endTimeSec !== null) {
+      queryParts.push('before:' + endTimeSec);
     }
 
     // Exclude sent messages restriction
@@ -255,7 +392,8 @@ function applyHierarchicalLabelsFromGmail() {
 
     if (ENABLE_DEBUG) {
       Logger.log('[Debug] Total cached Gmail labels in account: ' + userLabels.length);
-      Logger.log('[Debug] Time window configuration: ' + NEW_EMAIL_WINDOW_DAYS + ' day(s), ' + NEW_EMAIL_WINDOW_HOURS + ' hour(s), ' + NEW_EMAIL_WINDOW_MINUTES + ' minute(s)');
+      Logger.log('[Debug] Time window configuration (Start Sec): ' + (startTimeSec !== null ? startTimeSec : 'None'));
+      Logger.log('[Debug] Time window configuration (End Sec):   ' + (endTimeSec !== null ? endTimeSec : 'None'));
       Logger.log('[Debug] Restrict to target labels: ' + RESTRICT_TO_TARGET_LABELS);
       Logger.log('[Debug] Strict label validation: ' + STRICT_LABEL_VALIDATION);
       Logger.log('[Debug] Exclude sent messages (-from:me): ' + EXCLUDE_SENT_FROM_ME);
@@ -280,9 +418,14 @@ function applyHierarchicalLabelsFromGmail() {
       for (var msgIndex = 0; msgIndex < messages.length; msgIndex++) {
         var msg = messages[msgIndex];
 
+        var msgTimeMs = msg.getDate().getTime();
+
         // Double check exact millisecond timestamp if window is active
-        if (totalWindowMs > 0 && msg.getDate().getTime() < (startTime - totalWindowMs)) {
+        if (startTimeSec !== null && msgTimeMs < (startTimeSec * 1000)) {
           continue; 
+        }
+        if (endTimeSec !== null && msgTimeMs > (endTimeSec * 1000)) {
+          continue;
         }
     
         stats.totalMessages++;
@@ -380,7 +523,7 @@ function applyHierarchicalLabelsFromGmail() {
       Logger.log('=== Summary & Metrics (timeout reached: ' + timeOutReached + ') ===');
       Logger.log('==================================================');
       Logger.log('[Stats] Execution Time:                  ' + executionTimeSec + ' seconds (' + executionTimeMs + ' ms)');
-      Logger.log('[Stats] Search Scope Mode:               ' + (RESTRICT_TO_TARGET_LABELS ? 'Restricted (Wildcard Pattern)' : 'All User Labels'));
+      Logger.log('[Stats] Time Window Mode:                ' + timeWindowText);
       Logger.log('[Stats] Target Labels Active:            ' + activeMatchedLabels.join(', '));
       Logger.log('[Stats] Target Labels Missing:           ' + (missingTargetLabels.length > 0 ? missingTargetLabels.join(', ') : 'None'));
       Logger.log('[Stats] Total Threads Searched:          ' + stats.totalThreads);
@@ -439,7 +582,7 @@ function setupTrigger() {
     Logger.log('[Info] Trigger updated: Runs every ' + TRIGGER_EVERY_X + ' hour(s).');
   
   } else {
-  
+    
     switch (TRIGGER_EVERY_X) {
     
       case 1: builder.everyMinutes(1); break;
