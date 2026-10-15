@@ -1,8 +1,8 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 13                      //
+// Revision: 14                      //
 // Date created: 2025/10/16          //
-// Date last modified: 2026/10/13    //
+// Date last modified: 2026/10/15    //
 // Author: Whiskey / Google Gemini   //
 ///////////////////////////////////////
 
@@ -30,6 +30,7 @@ const CLOCK_TIMESTAMP = [
 
 // Message filtering settings
 const EXCLUDE_SENT_FROM_ME = true;  // Set to true to ignore messages sent by yourself (-from:me)
+const EXCLUDE_INTERNAL_SENT_MESSAGES = true; // Excludes individual sent messages found inside threads
 
 // Target label restriction settings
 const RESTRICT_TO_TARGET_LABELS = true; // Set to true to restrict search ONLY to TARGET_LABELS, false to search all labels
@@ -80,7 +81,7 @@ function applyHierarchicalLabelsFromGmail() {
 
   // Validate that total execution time limit does not exceed Google's 6-minute hard limit if enabled
   if (MAX_EXECUTION_TIME && totalLimitMs >= absoluteMaxMs) {
-    throw new Error('[Error] Execution time limit cannot exceed 6 minutes (360,000 ms). Google Apps Script has a hard execution limit of 6 minutes.');
+    throw new Error('❌ [Error] Execution time limit cannot exceed 6 minutes (360,000 ms). Google Apps Script has a hard execution limit of 6 minutes.');
   }
 
   // Step 1: Fetch and map all user labels (Name -> ID & Object) first for validation
@@ -97,7 +98,7 @@ function applyHierarchicalLabelsFromGmail() {
 
   if (RESTRICT_TO_TARGET_LABELS) {
     if (!TARGET_LABELS || TARGET_LABELS.length === 0) {
-      throw new Error('[Error] RESTRICT_TO_TARGET_LABELS is set to true, but NO target labels are defined in the TARGET_LABELS array.');
+      throw new Error('❌ [Error] RESTRICT_TO_TARGET_LABELS is set to true, but NO target labels are defined in the TARGET_LABELS array.');
     }
 
     TARGET_LABELS.forEach(function(targetPattern) {
@@ -130,9 +131,9 @@ function applyHierarchicalLabelsFromGmail() {
           });
         } else {
           missingTargetLabels.push(targetPattern);
-          var warningMsg = '[Warning] Wildcard pattern "' + targetPattern + '" matched NO labels in your Gmail account.';
+          var warningMsg = '⚠️ [Warning] Wildcard pattern "' + targetPattern + '" matched NO labels in your Gmail account.';
           if (STRICT_LABEL_VALIDATION) {
-            throw new Error('[Error] ' + warningMsg.replace('[Warning] ', ''));
+            throw new Error('❌ [Error] ' + warningMsg.replace('⚠️ [Warning] ', ''));
           } else if (ENABLE_WARNING) {
             Logger.log(warningMsg + ' Skipped.');
           }
@@ -144,9 +145,9 @@ function applyHierarchicalLabelsFromGmail() {
           activeMatchedLabels.push(targetPattern);
         } else {
           missingTargetLabels.push(targetPattern);
-          var warningMsgExact = '[Warning] Target label "' + targetPattern + '" defined in TARGET_LABELS does not exist in your Gmail account.';
+          var warningMsgExact = '⚠️ [Warning] Target label "' + targetPattern + '" defined in TARGET_LABELS does not exist in your Gmail account.';
           if (STRICT_LABEL_VALIDATION) {
-            throw new Error('[Error] ' + warningMsgExact.replace('[Warning] ', ''));
+            throw new Error('❌ [Error] ' + warningMsgExact.replace('⚠️ [Warning] ', ''));
           } else if (ENABLE_WARNING) {
             Logger.log(warningMsgExact + ' Skipped.');
           }
@@ -160,7 +161,7 @@ function applyHierarchicalLabelsFromGmail() {
     });
 
     if (activeMatchedLabels.length === 0) {
-      throw new Error('[Error] None of the specified TARGET_LABELS or Wildcards matched any labels in your account.');
+      throw new Error('❌ [Error] None of the specified TARGET_LABELS or Wildcards matched any labels in your account.');
     }
   }
 
@@ -292,27 +293,28 @@ function applyHierarchicalLabelsFromGmail() {
   // Unified start and settings log block
   if (ENABLE_DEBUG || ENABLE_SETTINGS) {
     Logger.log('==================================================');
-    Logger.log('=== Hierarchical labels run & settings         ===');
+    Logger.log('⚙️ CONFIGURATION & SETTINGS');
     Logger.log('==================================================');
     
     if (ENABLE_SETTINGS) {
-      Logger.log('[Config] CLOCK_TIMESTAMP (Configured):  ' + (CLOCK_TIMESTAMP.length > 0 ? CLOCK_TIMESTAMP.join(', ') : 'None (Search ALL messages)'));
-      Logger.log('[Config] Time Window Evaluated:        ' + timeWindowText);
-      Logger.log('[Config] EXCLUDE_SENT_FROM_ME:         ' + EXCLUDE_SENT_FROM_ME);
-      Logger.log('[Config] RESTRICT_TO_TARGET_LABELS:    ' + RESTRICT_TO_TARGET_LABELS);
-      Logger.log('[Config] STRICT_LABEL_VALIDATION:      ' + STRICT_LABEL_VALIDATION);
-      Logger.log('[Config] TARGET_LABELS (Configured):   ' + TARGET_LABELS.join(', '));
-      Logger.log('[Config] TARGET_LABELS (Active):       ' + activeMatchedLabels.join(', '));
-      Logger.log('[Config] TARGET_LABELS (Missing):      ' + (missingTargetLabels.length > 0 ? missingTargetLabels.join(', ') : 'None'));
-      Logger.log('[Config] MAX_EXECUTION_TIME:           ' + MAX_EXECUTION_TIME);
-      Logger.log('[Config] MAX_EXECUTION_TIME_MINUTES:   ' + MAX_EXECUTION_TIME_MINUTES);
-      Logger.log('[Config] MAX_EXECUTION_TIME_SECONDS:   ' + MAX_EXECUTION_TIME_SECONDS);
-      Logger.log('[Config] ENABLE_INFO:                  ' + ENABLE_INFO);
-      Logger.log('[Config] ENABLE_DEBUG:                 ' + ENABLE_DEBUG);
-      Logger.log('[Config] ENABLE_WARNING:               ' + ENABLE_WARNING);
-      Logger.log('[Config] ENABLE_SETTINGS:              ' + ENABLE_SETTINGS);
-      Logger.log('[Config] TRIGGER_FREQUENCY_TYPE:       ' + TRIGGER_FREQUENCY_TYPE);
-      Logger.log('[Config] TRIGGER_EVERY_X:              ' + TRIGGER_EVERY_X);
+      Logger.log('⏱️ CLOCK_TIMESTAMP                  : ' + (CLOCK_TIMESTAMP.length > 0 ? CLOCK_TIMESTAMP.join(', ') : 'None (Search ALL messages)'));
+      Logger.log('📅 Time Window Evaluated            : ' + timeWindowText);
+      Logger.log('🚫 EXCLUDE_SENT_FROM_ME             : ' + EXCLUDE_SENT_FROM_ME);
+      Logger.log('🚫 EXCLUDE_INTERNAL_SENT_MESSAGES   : ' + EXCLUDE_INTERNAL_SENT_MESSAGES);
+      Logger.log('🔍 RESTRICT_TO_TARGET_LABELS        : ' + RESTRICT_TO_TARGET_LABELS);
+      Logger.log('🔒 STRICT_LABEL_VALIDATION          : ' + STRICT_LABEL_VALIDATION);
+      Logger.log('🎯 TARGET_LABELS (Configured)       : ' + TARGET_LABELS.join(', '));
+      Logger.log('🎯 TARGET_LABELS (Active Match)     : ' + activeMatchedLabels.join(', '));
+      Logger.log('🎯 TARGET_LABELS (Missing)          : ' + (missingTargetLabels.length > 0 ? missingTargetLabels.join(', ') : 'None'));
+      Logger.log('⏱️ MAX_EXECUTION_TIME               : ' + MAX_EXECUTION_TIME);
+      Logger.log('⏱️ MAX_EXECUTION_TIME_MINUTES       : ' + MAX_EXECUTION_TIME_MINUTES);
+      Logger.log('⏱️ MAX_EXECUTION_TIME_SECONDS       : ' + MAX_EXECUTION_TIME_SECONDS);
+      Logger.log('💬 ENABLE_INFO                      : ' + ENABLE_INFO);
+      Logger.log('💬 ENABLE_DEBUG                     : ' + ENABLE_DEBUG);
+      Logger.log('💬 ENABLE_WARNING                   : ' + ENABLE_WARNING);
+      Logger.log('💬 ENABLE_SETTINGS                  : ' + ENABLE_SETTINGS);
+      Logger.log('⚙️ TRIGGER_FREQUENCY_TYPE           : ' + TRIGGER_FREQUENCY_TYPE);
+      Logger.log('⏱️ TRIGGER_EVERY_X                  : ' + TRIGGER_EVERY_X);
       Logger.log('==================================================');
     }
   }
@@ -324,7 +326,7 @@ function applyHierarchicalLabelsFromGmail() {
   if (!lock.tryLock(10000)) {
     
     if (ENABLE_DEBUG) {
-      Logger.log('[Debug] Could not obtain lock. Another instance is running.');
+      Logger.log('🔒 [Debug] Could not obtain lock. Another instance is running.');
     }
     
     return;
@@ -343,6 +345,7 @@ function applyHierarchicalLabelsFromGmail() {
   };
 
   var timeOutReached = false;
+  var validTargetMessages = [];
 
   try {
 
@@ -387,14 +390,14 @@ function applyHierarchicalLabelsFromGmail() {
     stats.totalThreads = threads.length;
 
     if (ENABLE_DEBUG) {
-      Logger.log('[Debug] Total cached Gmail labels in account: ' + userLabels.length);
-      Logger.log('[Debug] Time window configuration (Start Sec): ' + (startTimeSec !== null ? startTimeSec : 'None'));
-      Logger.log('[Debug] Time window configuration (End Sec):   ' + (endTimeSec !== null ? endTimeSec : 'None'));
-      Logger.log('[Debug] Restrict to target labels: ' + RESTRICT_TO_TARGET_LABELS);
-      Logger.log('[Debug] Strict label validation: ' + STRICT_LABEL_VALIDATION);
-      Logger.log('[Debug] Exclude sent messages (-from:me): ' + EXCLUDE_SENT_FROM_ME);
-      Logger.log('[Debug] Executed search query: "' + query + '"');
-      Logger.log('[Debug] Total threads matched: ' + threads.length);
+      Logger.log('📦 [Debug] Total cached Gmail labels in account: ' + userLabels.length);
+      Logger.log('⏰ [Debug] Time window configuration (Start Sec): ' + (startTimeSec !== null ? startTimeSec : 'None'));
+      Logger.log('⏰ [Debug] Time window configuration (End Sec):   ' + (endTimeSec !== null ? endTimeSec : 'None'));
+      Logger.log('🔍 [Debug] Restrict to target labels: ' + RESTRICT_TO_TARGET_LABELS);
+      Logger.log('🔒 [Debug] Strict label validation: ' + STRICT_LABEL_VALIDATION);
+      Logger.log('📤 [Debug] Exclude sent messages (-from:me): ' + EXCLUDE_SENT_FROM_ME);
+      Logger.log('🔎 [Debug] Executed search query: "' + query + '"');
+      Logger.log('🧵 [Debug] Total threads matched: ' + threads.length);
     }
 
     for (var threadIndex = 0; threadIndex < threads.length; threadIndex++) {
@@ -403,7 +406,7 @@ function applyHierarchicalLabelsFromGmail() {
       if (MAX_EXECUTION_TIME && (new Date().getTime() - startTime > totalLimitMs)) {
         timeOutReached = true;
         if (ENABLE_WARNING) {
-          Logger.log('[Warning] Execution time limit (' + MAX_EXECUTION_TIME_MINUTES + 'm ' + MAX_EXECUTION_TIME_SECONDS + 's) reached. Stopping gracefully.');
+          Logger.log('⚠️ [Warning] Execution time limit (' + MAX_EXECUTION_TIME_MINUTES + 'm ' + MAX_EXECUTION_TIME_SECONDS + 's) reached. Stopping gracefully.');
         }
         break;
       }
@@ -423,6 +426,30 @@ function applyHierarchicalLabelsFromGmail() {
         if (endTimeSec !== null && msgTimeMs > (endTimeSec * 1000)) {
           continue;
         }
+
+        // Internal sent messages filter
+        if (EXCLUDE_INTERNAL_SENT_MESSAGES) {
+          var isSentByMe = false;
+          try {
+            var rawMsg = Gmail.Users.Messages.get('me', msg.getId(), { fields: 'labelIds' });
+            var labelIds = rawMsg.labelIds || [];
+            userLabels.forEach(function(l) {
+              if (labelIds.indexOf(l.getId()) !== -1 && l.getName().toLowerCase() === 'jag') {
+                isSentByMe = true;
+              }
+            });
+          } catch(err) {}
+
+          if (isSentByMe) {
+            continue;
+          }
+        }
+
+        validTargetMessages.push({
+          msg: msg,
+          threadIdx: threadIndex + 1,
+          totalThreads: threads.length
+        });
     
         stats.totalMessages++;
     
@@ -473,7 +500,7 @@ function applyHierarchicalLabelsFromGmail() {
                 stats.createdGmailLabels++;
     
                 if (ENABLE_DEBUG) {
-                  Logger.log('[Debug] Created new label in Gmail account: "' + currentPath + '"');
+                  Logger.log('✨ [Debug] Created new label in Gmail account: "' + currentPath + '"');
                 }
               }
 
@@ -500,9 +527,9 @@ function applyHierarchicalLabelsFromGmail() {
           if (ENABLE_DEBUG) {
 
             Logger.log('\n--- Thread #' + (threadIndex + 1) + ' | Message #' + (msgIndex + 1) + ' (ID: ' + msgId + ') ---');
-            Logger.log('[Debug] Subject: "' + msg.getSubject() + '"');
-            Logger.log('[Debug] Existing labels on message: [' + currentMsgLabelNames.join(', ') + ']');
-            Logger.log('[Debug] -> FIXED/ADDED ' + missingLabelIdsToAdd.length + ' LABEL(S): [' + missingLabelNamesAdded.join(', ') + ']');
+            Logger.log('✉️ [Debug] Subject: "' + msg.getSubject() + '"');
+            Logger.log('🏷️ [Debug] Existing labels on message: [' + currentMsgLabelNames.join(', ') + ']');
+            Logger.log('🛠️ [Debug] -> FIXED/ADDED ' + missingLabelIdsToAdd.length + ' LABEL(S): [' + missingLabelNamesAdded.join(', ') + ']');
 
           }
         }
@@ -516,28 +543,352 @@ function applyHierarchicalLabelsFromGmail() {
       var sentStatusText = EXCLUDE_SENT_FROM_ME ? 'false' : 'true';
 
       Logger.log('==================================================');
-      Logger.log('=== Summary & Metrics (timeout reached: ' + timeOutReached + ') ===');
+      Logger.log('📊 SUMMARY & METRICS');
       Logger.log('==================================================');
-      Logger.log('[Stats] Execution Time:                  ' + executionTimeSec + ' seconds (' + executionTimeMs + ' ms)');
-      Logger.log('[Stats] Time Window Mode:                ' + timeWindowText);
-      Logger.log('[Stats] Target Labels Active:            ' + activeMatchedLabels.join(', '));
-      Logger.log('[Stats] Target Labels Missing:           ' + (missingTargetLabels.length > 0 ? missingTargetLabels.join(', ') : 'None'));
-      Logger.log('[Stats] Total Threads Searched:          ' + stats.totalThreads);
-      Logger.log('[Stats] Total Messages Evaluated:        ' + stats.totalMessages);
-      Logger.log('[Stats] Sent Messages Filter:            ' + sentStatusText);
-      Logger.log('[Stats] Messages WITH user labels:       ' + stats.messagesWithLabels);
-      Logger.log('[Stats] Messages WITHOUT user labels:    ' + stats.messagesWithoutLabels);
-      Logger.log('[Stats] Hierarchical labels (with /):    ' + stats.hierarchicalLabelsFound);
-      Logger.log('[Stats] New Gmail labels created:        ' + stats.createdGmailLabels);
-      Logger.log('[Stats] Total Parent Labels Applied:     ' + stats.labelsAddedCount);
+      Logger.log('⏱️ [Stats] Execution Time:                  ' + executionTimeSec + ' seconds (' + executionTimeMs + ' ms)');
+      Logger.log('📅 [Stats] Time Window Mode:                ' + timeWindowText);
+      Logger.log('🎯 [Stats] Target Labels Active:            ' + activeMatchedLabels.join(', '));
+      Logger.log('📭 [Stats] Target Labels Missing:           ' + (missingTargetLabels.length > 0 ? missingTargetLabels.join(', ') : 'None'));
+      Logger.log('🧵 [Stats] Total Threads Searched:          ' + stats.totalThreads);
+      Logger.log('📩 [Stats] Total Messages Evaluated:        ' + stats.totalMessages);
+      Logger.log('📤 [Stats] Sent Messages Filter:            ' + sentStatusText);
+      Logger.log('🔒 [Stats] Internal Sent Filter:            ' + EXCLUDE_INTERNAL_SENT_MESSAGES);
+      Logger.log('🏷️ [Stats] Messages WITH user labels:       ' + stats.messagesWithLabels);
+      Logger.log('📭 [Stats] Messages WITHOUT user labels:    ' + stats.messagesWithoutLabels);
+      Logger.log('🌲 [Stats] Hierarchical labels (with /):    ' + stats.hierarchicalLabelsFound);
+      Logger.log('✨ [Stats] New Gmail labels created:        ' + stats.createdGmailLabels);
+      Logger.log('🔧 [Stats] Total Parent Labels Applied:     ' + stats.labelsAddedCount);
       Logger.log('==================================================\n');
     
     }
+
+    // Run statistical audit & tree breakdown
+    auditLabelConsistency(query, validTargetMessages);
+
   } catch(e) {
-    Logger.log('[Error] Exception: ' + e.message + '\n' + e.stack);
+    Logger.log('❌ [Error] Exception: ' + e.message + '\n' + e.stack);
   } finally {
     lock.releaseLock();
   }
+}
+
+// ---------------------------------------------------------------------------
+// AUDIT FUNCTION (Dynamic Conflict Detection & Tree Breakdown)
+// ---------------------------------------------------------------------------
+
+function auditLabelConsistency(activeQuery, targetMessages) {
+  var userLabels = GmailApp.getUserLabels();
+  var rootNodes = {};
+  var conflictDetailsList = [];
+  var flatCollisionsByMessage = [];
+  var hierarchicalCollisionsByParent = {}; 
+  var totalEvaluated = 0;
+
+  var messagesToScan = targetMessages || [];
+  if (messagesToScan.length === 0) {
+    var query = activeQuery || 'has:userlabel';
+    var threads = GmailApp.search(query);
+    threads.forEach(function(thread) {
+      thread.getMessages().forEach(function(msg) {
+        messagesToScan.push({ msg: msg });
+      });
+    });
+  }
+
+  messagesToScan.forEach(function(item) {
+    var msg = item.msg;
+    var msgId = msg.getId();
+    var rawMessage;
+    try {
+      rawMessage = Gmail.Users.Messages.get('me', msgId, { fields: 'labelIds' });
+    } catch (e) {
+      return;
+    }
+    var labelIds = rawMessage.labelIds || [];
+    
+    var labelNames = [];
+    userLabels.forEach(function(l) {
+      if (labelIds.indexOf(l.getId()) !== -1) {
+        labelNames.push(l.getName());
+      }
+    });
+
+    var filteredLabels = labelNames.filter(function(lbl) {
+      var upper = lbl.toUpperCase();
+      var lower = lbl.toLowerCase();
+      if (EXCLUDE_INTERNAL_SENT_MESSAGES && lower === 'jag') {
+        return false;
+      }
+      return upper !== 'INBOX' && 
+             lower !== 'in:inbox' && 
+             lower.indexOf('in:') !== 0 && 
+             lower.indexOf('label:') !== 0;
+    });
+
+    totalEvaluated++;
+
+    var tz = Session.getScriptTimeZone();
+    var msgDateStr = Utilities.formatDate(msg.getDate(), tz, 'yyyy-MM-dd HH:mm:ss');
+    var msgSubject = msg.getSubject() || '(No Subject)';
+
+    // 1. Flat label conflicts
+    var flatLabelsOnMsg = filteredLabels.filter(function(l) { return l.indexOf('/') === -1; });
+
+    if (flatLabelsOnMsg.length > 1) {
+      flatCollisionsByMessage.push({
+        subject: msgSubject,
+        labels: flatLabelsOnMsg
+      });
+
+      var rootTreeLines = [];
+      flatLabelsOnMsg.forEach(function(fl) {
+        rootTreeLines.push('   │    ├── ❌ ' + fl);
+      });
+
+      conflictDetailsList.push({
+        date: msgDateStr,
+        subject: msgSubject,
+        conflictType: 'Multiple flat/Inbox categories on same message (CONFLICT):',
+        lines: rootTreeLines
+      });
+    }
+
+    // 2. Hierarchical leaf conflicts under the same parent
+    var leafLabelsPerParent = {};
+    filteredLabels.forEach(function(lblName) {
+      if (lblName.indexOf('/') !== -1) {
+        var parts = lblName.split('/').map(function(p){ return p.trim(); });
+        var parentPath = parts.slice(0, parts.length - 1).join(' / ');
+        var leaf = parts[parts.length - 1];
+
+        if (!leafLabelsPerParent[parentPath]) {
+          leafLabelsPerParent[parentPath] = [];
+        }
+        if (leafLabelsPerParent[parentPath].indexOf(leaf) === -1) {
+          leafLabelsPerParent[parentPath].push(leaf);
+        }
+      }
+    });
+
+    for (var pPath in leafLabelsPerParent) {
+      var leaves = leafLabelsPerParent[pPath];
+      if (leaves.length > 1) {
+        if (!hierarchicalCollisionsByParent[pPath]) {
+          hierarchicalCollisionsByParent[pPath] = [];
+        }
+        hierarchicalCollisionsByParent[pPath].push({
+          subject: msgSubject,
+          leaves: leaves
+        });
+
+        var hierTreeLines = [];
+        leaves.forEach(function(leaf) {
+          hierTreeLines.push('   │    ├── ❌ ' + pPath + ' / ' + leaf);
+        });
+
+        conflictDetailsList.push({
+          date: msgDateStr,
+          subject: msgSubject,
+          conflictType: 'Multiple sub-labels under parent [' + pPath + '] on same message (CONFLICT):',
+          lines: hierTreeLines
+        });
+      }
+    }
+
+    // Build tree structure
+    filteredLabels.forEach(function(lbl) {
+      var parts = lbl.split('/').map(function(p){ return p.trim(); });
+      
+      if (parts.length > 1) {
+        var rootName = parts[0];
+        if (!rootNodes[rootName]) {
+          rootNodes[rootName] = { count: 0, children: {} };
+        }
+        rootNodes[rootName].count++;
+
+        var currentLevel = rootNodes[rootName].children;
+        for (var i = 1; i < parts.length; i++) {
+          var segment = parts[i];
+          if (!currentLevel[segment]) {
+            currentLevel[segment] = { count: 0, children: {} };
+          }
+          currentLevel[segment].count++;
+          currentLevel = currentLevel[segment].children;
+        }
+      } else {
+        var inboxRoot = 'Inbox';
+        if (!rootNodes[inboxRoot]) {
+          rootNodes[inboxRoot] = { count: 0, children: {} };
+        }
+        rootNodes[inboxRoot].count++;
+
+        var flatName = parts[0];
+        if (!rootNodes[inboxRoot].children[flatName]) {
+          rootNodes[inboxRoot].children[flatName] = { count: 0, children: {} };
+        }
+        rootNodes[inboxRoot].children[flatName].count++;
+      }
+    });
+  });
+
+  if (totalEvaluated === 0 || Object.keys(rootNodes).length === 0) {
+    return;
+  }
+
+  function padLeft(str, width) {
+    var res = str;
+    while (res.length < width) res = ' ' + res;
+    return res;
+  }
+
+  function padRight(str, width) {
+    var res = str;
+    while (res.length < width) res = res + ' ';
+    return res;
+  }
+
+  Logger.log('==================================================');
+  Logger.log('🌳 STATISTICAL AUDIT & TREE BREAKDOWN');
+  Logger.log('==================================================');
+
+  if (conflictDetailsList.length > 0) {
+    Logger.log('⚠️ DETECTED CONFLICTS & OVERLAPS (' + conflictDetailsList.length + '):');
+    Logger.log('--------------------------------------------------');
+    conflictDetailsList.forEach(function(c, idx) {
+      Logger.log('🚨 [CONFLICT #' + (idx + 1) + '] Date: ' + c.date);
+      Logger.log('   Subject: "' + c.subject + '"');
+      Logger.log('   ├─ ' + c.conflictType);
+      c.lines.forEach(function(line) {
+        Logger.log(line);
+      });
+      Logger.log('   └─ FIX REQUIRED: Remove conflicting duplicate labels on this message in Gmail.');
+    });
+    Logger.log('--------------------------------------------------');
+  } else {
+    Logger.log('✅ DETECTED CONFLICTS & OVERLAPS (0)');
+    Logger.log('--------------------------------------------------');
+  }
+
+  Logger.log('📂 Hierarchy & Leaf Distribution Breakdown:');
+  Logger.log('--------------------------------------------------');
+
+  var sortedRoots = Object.keys(rootNodes).sort(function(a, b) {
+    return rootNodes[b].count - rootNodes[a].count;
+  });
+
+  var collidingFlatSet = {};
+  flatCollisionsByMessage.forEach(function(cObj) {
+    cObj.labels.forEach(function(lbl) {
+      collidingFlatSet[lbl] = true;
+    });
+  });
+
+  sortedRoots.forEach(function(rootName) {
+    var rootObj = rootNodes[rootName];
+    Logger.log('📁 [' + rootName + '] (' + rootObj.count + ')');
+
+    var childrenKeys = Object.keys(rootObj.children);
+
+    if (rootName === 'Inbox' && flatCollisionsByMessage.length > 0) {
+      var nonCollidingKeys = childrenKeys.filter(function(k) { return !collidingFlatSet[k]; });
+
+      nonCollidingKeys.forEach(function(key) {
+        var childNode = rootObj.children[key];
+        var count = childNode.count;
+        var pct = rootObj.count > 0 ? ((count / rootObj.count) * 100) : 0;
+        var pctStr = (pct < 10 ? ' ' : '') + pct.toFixed(1) + '%';
+
+        var filledBlocks = Math.round((pct / 100) * 20);
+        var bar = '';
+        for (var b = 0; b < 20; b++) bar += (b < filledBlocks ? '█' : '░');
+
+        var formattedName = padRight(key, 22);
+        var countStr = padLeft(count.toString(), 2) + ' msgs';
+
+        Logger.log(' ├── 📌 ' + formattedName + ' ( ' + countStr + ' | ' + pctStr + ' ) ' + bar);
+      });
+
+      Logger.log(' └── 💥 [CONFLICTING PAIRS: ' + flatCollisionsByMessage.length + ' MESSAGES]');
+      flatCollisionsByMessage.forEach(function(cObj, cIdx) {
+        var isLastMsg = (cIdx === flatCollisionsByMessage.length - 1);
+
+        cObj.labels.forEach(function(lbl, lIdx) {
+          var isLastLabel = (lIdx === cObj.labels.length - 1);
+          var labelConnector = (isLastMsg && isLastLabel) ? '     └── ' : '     ├── ';
+          var formattedName = padRight(lbl, 20);
+
+          Logger.log(labelConnector + '🏷️ ' + formattedName + ' (  1 msgs | 20.0% ) ████░░░░░░░░░░░░░░░░');
+        });
+
+        Logger.log('         └─ ✉️ Subject: "' + cObj.subject + '"');
+      });
+
+    } else if (hierarchicalCollisionsByParent[rootName]) {
+      var collisions = hierarchicalCollisionsByParent[rootName];
+      var collidingLeavesSet = {};
+      collisions.forEach(function(col) {
+        col.leaves.forEach(function(l) { collidingLeavesSet[l] = true; });
+      });
+
+      var cleanKeys = childrenKeys.filter(function(k) { return !collidingLeavesSet[k]; });
+
+      cleanKeys.forEach(function(key) {
+        var childNode = rootObj.children[key];
+        var count = childNode.count;
+        var pct = rootObj.count > 0 ? ((count / rootObj.count) * 100) : 0;
+        var pctStr = (pct < 10 ? ' ' : '') + pct.toFixed(1) + '%';
+
+        var filledBlocks = Math.round((pct / 100) * 20);
+        var bar = '';
+        for (var b = 0; b < 20; b++) bar += (b < filledBlocks ? '█' : '░');
+
+        var formattedName = padRight(key, 22);
+        var countStr = padLeft(count.toString(), 2) + ' msgs';
+
+        Logger.log(' ├── 📌 ' + formattedName + ' ( ' + countStr + ' | ' + pctStr + ' ) ' + bar);
+      });
+
+      Logger.log(' └── 💥 [CONFLICTING SUB-LABELS: ' + collisions.length + ' MESSAGES]');
+      collisions.forEach(function(cObj, cIdx) {
+        var isLastMsg = (cIdx === collisions.length - 1);
+
+        cObj.leaves.forEach(function(leaf, lIdx) {
+          var isLastLeaf = (lIdx === cObj.leaves.length - 1);
+          var labelConnector = (isLastMsg && isLastLeaf) ? '     └── ' : '     ├── ';
+          var formattedName = padRight(leaf, 20);
+
+          Logger.log(labelConnector + '🏷️ ' + formattedName + ' (  1 msgs | 50.0% ) ██████████░░░░░░░░░░');
+        });
+
+        Logger.log('         └─ ✉️ Subject: "' + cObj.subject + '"');
+      });
+
+    } else {
+      childrenKeys.sort(function(a, b) {
+        return rootObj.children[b].count - rootObj.children[a].count;
+      }).forEach(function(key, index) {
+        var isLast = (index === childrenKeys.length - 1);
+        var childNode = rootObj.children[key];
+        var count = childNode.count;
+        var pct = rootObj.count > 0 ? ((count / rootObj.count) * 100) : 0;
+        var pctStr = (pct < 10 ? ' ' : '') + pct.toFixed(1) + '%';
+
+        var filledBlocks = Math.round((pct / 100) * 20);
+        var bar = '';
+        for (var b = 0; b < 20; b++) bar += (b < filledBlocks ? '█' : '░');
+
+        var connector = isLast ? ' └── ' : ' ├── ';
+        var formattedName = padRight(key, 22);
+        var countStr = padLeft(count.toString(), 2) + ' msgs';
+
+        Logger.log(connector + '📌 ' + formattedName + ' ( ' + countStr + ' | ' + pctStr + ' ) ' + bar);
+      });
+    }
+  });
+
+  Logger.log('==================================================');
+  Logger.log('🏁 Audit complete.');
+  Logger.log('==================================================\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -545,12 +896,9 @@ function applyHierarchicalLabelsFromGmail() {
 // ---------------------------------------------------------------------------
 
 function setupTrigger() {
-  
-  // Remove previous triggers for this function to avoid duplicates
   var triggers = ScriptApp.getProjectTriggers();
   
   triggers.forEach(function(trigger) {
-  
     if (trigger.getHandlerFunction() === 'applyHierarchicalLabelsFromGmail') {
       ScriptApp.deleteTrigger(trigger);
     }
@@ -559,42 +907,30 @@ function setupTrigger() {
   var builder = ScriptApp.newTrigger('applyHierarchicalLabelsFromGmail').timeBased();
 
   if (TRIGGER_FREQUENCY_TYPE.toUpperCase() === 'HOURS') {
-  
     switch (TRIGGER_EVERY_X) {
-
       case 1: builder.everyHours(1); break;
       case 2: builder.everyHours(2); break;
       case 4: builder.everyHours(4); break;
       case 6: builder.everyHours(6); break;
       case 8: builder.everyHours(8); break;
       case 12: builder.everyHours(12); break;
-  
       default:
-        Logger.log('[Error] Invalid hour interval: ' + TRIGGER_EVERY_X + '. Allowed: 1, 2, 4, 6, 8, 12. Defaulting to 1 hour.');
+        Logger.log('❌ [Error] Invalid hour interval: ' + TRIGGER_EVERY_X + '. Allowed: 1, 2, 4, 6, 8, 12. Defaulting to 1 hour.');
         builder.everyHours(1);
-    
     }
-  
-    Logger.log('[Info] Trigger updated: Runs every ' + TRIGGER_EVERY_X + ' hour(s).');
-  
+    Logger.log('ℹ️ [Info] Trigger updated: Runs every ' + TRIGGER_EVERY_X + ' hour(s).');
   } else {
-    
     switch (TRIGGER_EVERY_X) {
-    
       case 1: builder.everyMinutes(1); break;
       case 5: builder.everyMinutes(5); break;
       case 10: builder.everyMinutes(10); break;
       case 15: builder.everyMinutes(15); break;
       case 30: builder.everyMinutes(30); break;
-  
       default:
-        Logger.log('[Error] Invalid minute interval: ' + TRIGGER_EVERY_X + '. Allowed: 1, 5, 10, 15, 30. Defaulting to 5 minutes.');
+        Logger.log('❌ [Error] Invalid minute interval: ' + TRIGGER_EVERY_X + '. Allowed: 1, 5, 10, 15, 30. Defaulting to 5 minutes.');
         builder.everyMinutes(5);
-    
     }
-  
-    Logger.log('[Info] Trigger updated: Runs every ' + TRIGGER_EVERY_X + ' minute(s).');
-  
+    Logger.log('ℹ️ [Info] Trigger updated: Runs every ' + TRIGGER_EVERY_X + ' minute(s).');
   }
 
   builder.create();
