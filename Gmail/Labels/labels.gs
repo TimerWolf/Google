@@ -1,6 +1,6 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 15                      //
+// Revision: 16                      //
 // Date created: 2025/10/16          //
 // Date last modified: 2026/10/16    //
 // Author: Whiskey / Google Gemini   //
@@ -756,15 +756,24 @@ function auditLabelConsistency(activeQuery, targetMessages) {
   if (conflictDetailsList.length > 0) {
     Logger.log('⚠️ DETECTED CONFLICTS & OVERLAPS (' + conflictDetailsList.length + '):');
     Logger.log('--------------------------------------------------');
-    conflictDetailsList.forEach(function(c, idx) {
-      Logger.log('🚨 [CONFLICT #' + (idx + 1) + '] Date: ' + c.date);
-      Logger.log('   Subject: "' + c.subject + '"');
-      Logger.log('   ├─ ' + c.conflictType);
-      c.lines.forEach(function(line) {
-        Logger.log(line);
-      });
-      Logger.log('   └─ FIX REQUIRED: Remove conflicting duplicate labels on this message in Gmail.');
+    
+    // 1. Flat label conflicts formatted with the clean style
+    flatCollisionsByMessage.forEach(function(cObj) {
+      var labelString = cObj.labels.join(' 🏷️ ');
+      Logger.log('┌── 🚨 Date: [' + cObj.date + '] | Subject: "' + cObj.subject + '"');
+      Logger.log('└── Conflict: 🏷️ ' + labelString);
     });
+
+    // 2. Hierarchical leaf conflicts formatted similarly
+    for (var pPath in hierarchicalCollisionsByParent) {
+      var collisions = hierarchicalCollisionsByParent[pPath];
+      collisions.forEach(function(cObj) {
+        var leafString = cObj.leaves.join(' 🏷️ ' + pPath + ' / ');
+        Logger.log('┌── 🚨 Date: [' + cObj.date + '] | Subject: "' + cObj.subject + '"');
+        Logger.log('└── Conflict: 🏷️ ' + pPath + ' / ' + leafString);
+      });
+    }
+    
     Logger.log('--------------------------------------------------');
   } else {
     Logger.log('✅ DETECTED CONFLICTS & OVERLAPS (0)');
