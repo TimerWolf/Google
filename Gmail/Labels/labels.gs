@@ -1,8 +1,8 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 14                      //
+// Revision: 15                      //
 // Date created: 2025/10/16          //
-// Date last modified: 2026/10/15    //
+// Date last modified: 2026/10/16    //
 // Author: Whiskey / Google Gemini   //
 ///////////////////////////////////////
 
@@ -636,6 +636,7 @@ function auditLabelConsistency(activeQuery, targetMessages) {
 
     if (flatLabelsOnMsg.length > 1) {
       flatCollisionsByMessage.push({
+        date: msgDateStr,
         subject: msgSubject,
         labels: flatLabelsOnMsg
       });
@@ -677,6 +678,7 @@ function auditLabelConsistency(activeQuery, targetMessages) {
           hierarchicalCollisionsByParent[pPath] = [];
         }
         hierarchicalCollisionsByParent[pPath].push({
+          date: msgDateStr,
           subject: msgSubject,
           leaves: leaves
         });
@@ -811,16 +813,17 @@ function auditLabelConsistency(activeQuery, targetMessages) {
       Logger.log(' └── 💥 [CONFLICTING PAIRS: ' + flatCollisionsByMessage.length + ' MESSAGES]');
       flatCollisionsByMessage.forEach(function(cObj, cIdx) {
         var isLastMsg = (cIdx === flatCollisionsByMessage.length - 1);
+        var msgConnector = isLastMsg ? '     └── ' : '     ├── ';
+
+        Logger.log(msgConnector + '✉️ Subject: "' + cObj.subject + '" | Date: ' + cObj.date);
 
         cObj.labels.forEach(function(lbl, lIdx) {
           var isLastLabel = (lIdx === cObj.labels.length - 1);
-          var labelConnector = (isLastMsg && isLastLabel) ? '     └── ' : '     ├── ';
+          var subConnector = isLastMsg ? (isLastLabel ? '         └── ' : '         ├── ') : (isLastLabel ? '     │   └── ' : '     │   ├── ');
           var formattedName = padRight(lbl, 20);
 
-          Logger.log(labelConnector + '🏷️ ' + formattedName + ' (  1 msgs | 20.0% ) ████░░░░░░░░░░░░░░░░');
+          Logger.log(subConnector + '🏷️ ' + formattedName + ' (  1 msgs | 20.0% ) ████░░░░░░░░░░░░░░░░');
         });
-
-        Logger.log('         └─ ✉️ Subject: "' + cObj.subject + '"');
       });
 
     } else if (hierarchicalCollisionsByParent[rootName]) {
@@ -851,16 +854,17 @@ function auditLabelConsistency(activeQuery, targetMessages) {
       Logger.log(' └── 💥 [CONFLICTING SUB-LABELS: ' + collisions.length + ' MESSAGES]');
       collisions.forEach(function(cObj, cIdx) {
         var isLastMsg = (cIdx === collisions.length - 1);
+        var msgConnector = isLastMsg ? '     └── ' : '     ├── ';
+
+        Logger.log(msgConnector + '✉️ Subject: "' + cObj.subject + '" | Date: ' + cObj.date);
 
         cObj.leaves.forEach(function(leaf, lIdx) {
           var isLastLeaf = (lIdx === cObj.leaves.length - 1);
-          var labelConnector = (isLastMsg && isLastLeaf) ? '     └── ' : '     ├── ';
+          var subConnector = isLastMsg ? (isLastLeaf ? '         └── ' : '         ├── ') : (isLastLeaf ? '     │   └── ' : '     │   ├── ');
           var formattedName = padRight(leaf, 20);
 
-          Logger.log(labelConnector + '🏷️ ' + formattedName + ' (  1 msgs | 50.0% ) ██████████░░░░░░░░░░');
+          Logger.log(subConnector + '🏷️ ' + formattedName + ' (  1 msgs | 50.0% ) ██████████░░░░░░░░░░');
         });
-
-        Logger.log('         └─ ✉️ Subject: "' + cObj.subject + '"');
       });
 
     } else {
