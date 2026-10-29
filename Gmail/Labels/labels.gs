@@ -1,8 +1,8 @@
 ///////////////////////////////////////
 // Gmail: labels                     //
-// Revision: 16                      //
+// Revision: 17                      //
 // Date created: 2025/10/16          //
-// Date last modified: 2026/10/16    //
+// Date last modified: 2026/10/29    //
 // Author: Whiskey / Google Gemini   //
 ///////////////////////////////////////
 
@@ -336,6 +336,8 @@ function applyHierarchicalLabelsFromGmail() {
   // Counters for statistics
   var stats = {
     totalThreads: 0,
+    threadsWithLabels: 0,
+    threadsWithoutLabels: 0,
     totalMessages: 0,
     messagesWithLabels: 0,
     messagesWithoutLabels: 0,
@@ -413,6 +415,7 @@ function applyHierarchicalLabelsFromGmail() {
 
       var thread = threads[threadIndex];
       var messages = thread.getMessages();
+      var threadHasUserLabels = false;
 
       for (var msgIndex = 0; msgIndex < messages.length; msgIndex++) {
         var msg = messages[msgIndex];
@@ -470,6 +473,7 @@ function applyHierarchicalLabelsFromGmail() {
 
         if (currentMsgLabelNames.length > 0) {
           stats.messagesWithLabels++;
+          threadHasUserLabels = true;
         } else {
           stats.messagesWithoutLabels++;
         }
@@ -534,12 +538,19 @@ function applyHierarchicalLabelsFromGmail() {
           }
         }
       }
+
+      if (threadHasUserLabels) {
+        stats.threadsWithLabels++;
+      } else {
+        stats.threadsWithoutLabels++;
+      }
     }
 
     if (ENABLE_INFO || timeOutReached) {
 
       var executionTimeMs = new Date().getTime() - startTime;
       var executionTimeSec = (executionTimeMs / 1000).toFixed(2);
+      var executionTimeFormatted = parts.join(', ');
       var sentStatusText = EXCLUDE_SENT_FROM_ME ? 'false' : 'true';
 
       Logger.log('==================================================');
@@ -547,14 +558,19 @@ function applyHierarchicalLabelsFromGmail() {
       Logger.log('==================================================');
       Logger.log('⏱️ [Stats] Execution Time:                  ' + executionTimeSec + ' seconds (' + executionTimeMs + ' ms)');
       Logger.log('📅 [Stats] Time Window Mode:                ' + timeWindowText);
-      Logger.log('🎯 [Stats] Target Labels Active:            ' + activeMatchedLabels.join(', '));
-      Logger.log('📭 [Stats] Target Labels Missing:           ' + (missingTargetLabels.length > 0 ? missingTargetLabels.join(', ') : 'None'));
-      Logger.log('🧵 [Stats] Total Threads Searched:          ' + stats.totalThreads);
-      Logger.log('📩 [Stats] Total Messages Evaluated:        ' + stats.totalMessages);
       Logger.log('📤 [Stats] Sent Messages Filter:            ' + sentStatusText);
       Logger.log('🔒 [Stats] Internal Sent Filter:            ' + EXCLUDE_INTERNAL_SENT_MESSAGES);
+      Logger.log('--------------------------------------------------');
+      Logger.log('📩 [Stats] Total Messages Searched:         ' + stats.totalMessages);
       Logger.log('🏷️ [Stats] Messages WITH user labels:       ' + stats.messagesWithLabels);
       Logger.log('📭 [Stats] Messages WITHOUT user labels:    ' + stats.messagesWithoutLabels);
+      Logger.log('--------------------------------------------------');
+      Logger.log('🧵 [Stats] Total Threads Searched:          ' + stats.totalThreads);
+      Logger.log('🧵 [Stats] Threads WITH user labels:        ' + stats.threadsWithLabels);
+      Logger.log('🧵 [Stats] Threads WITHOUT user labels:     ' + stats.threadsWithoutLabels);
+      Logger.log('--------------------------------------------------');
+      Logger.log('🎯 [Stats] Target Labels Active:            ' + activeMatchedLabels.join(', '));
+      Logger.log('📭 [Stats] Target Labels Missing:           ' + (missingTargetLabels.length > 0 ? missingTargetLabels.join(', ') : 'None'));
       Logger.log('🌲 [Stats] Hierarchical labels (with /):    ' + stats.hierarchicalLabelsFound);
       Logger.log('✨ [Stats] New Gmail labels created:        ' + stats.createdGmailLabels);
       Logger.log('🔧 [Stats] Total Parent Labels Applied:     ' + stats.labelsAddedCount);
